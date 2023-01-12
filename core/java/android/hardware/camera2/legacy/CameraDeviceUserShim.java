@@ -567,6 +567,10 @@ public class CameraDeviceUserShim implements ICameraDeviceUser {
         if (DEBUG) {
             Log.d(TAG, "createStream called.");
         }
+        else {
+            Log.i(TAG, "createStream called.");
+        }
+        
         if (mLegacyDevice.isClosed()) {
             String err = "Cannot create stream, device has been closed.";
             Log.e(TAG, err);

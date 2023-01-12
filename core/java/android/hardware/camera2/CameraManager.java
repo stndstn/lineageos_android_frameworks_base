@@ -841,9 +841,13 @@ public final class CameraManager {
                 connectCameraServiceLocked();
 
                 int idCount = 0;
+                Log.i(TAG, "getCameraIdList mDeviceStatus.size(): " + mDeviceStatus.size());    //T.Tateishi
+                Log.i(TAG, "getCameraIdList Camera.shouldExposeAuxCamera(): " + Camera.shouldExposeAuxCamera());    //T.Tateishi
                 for (int i = 0; i < mDeviceStatus.size(); i++) {
+                    Log.i(TAG, "getCameraIdList i: " + i);  //T.Tateishi
                     if ((i == 2) && !Camera.shouldExposeAuxCamera()) break;
                     int status = mDeviceStatus.valueAt(i);
+                    Log.i(TAG, "getCameraIdList status: " + status);    //T.Tateishi
                     if (status == ICameraServiceListener.STATUS_NOT_PRESENT ||
                             status == ICameraServiceListener.STATUS_ENUMERATING) continue;
                     idCount++;
@@ -988,6 +992,7 @@ public final class CameraManager {
         }
 
         private void onStatusChangedLocked(int status, String id) {
+            Log.v(TAG, String.format("onStatusChangedLocked status:%d id:%s",status, id));
             /* Force to ignore the last mono/aux camera status update
              * if the package name does not falls in this bucket
              */
@@ -1010,6 +1015,7 @@ public final class CameraManager {
             }
 
             Integer oldStatus = mDeviceStatus.put(id, status);
+            Log.v(TAG, String.format("oldStatus:%d",oldStatus));
 
             if (oldStatus != null && oldStatus == status) {
                 if (DEBUG) {
@@ -1046,6 +1052,7 @@ public final class CameraManager {
             }
 
             final int callbackCount = mCallbackMap.size();
+            Log.v(TAG, String.format("callbackCount:%d",callbackCount));
             for (int i = 0; i < callbackCount; i++) {
                 Handler handler = mCallbackMap.valueAt(i);
                 final AvailabilityCallback callback = mCallbackMap.keyAt(i);

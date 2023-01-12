@@ -267,9 +267,11 @@ public class Camera {
          * if the package name does not falls in this bucket
          */
         int numberOfCameras = native_getNumberOfCameras();
+        Log.i(TAG, "getNumberOfCameras numberOfCameras: " + numberOfCameras);  //T.Tateishi
         if ((numberOfCameras > 2) && !shouldExposeAuxCamera()) {
             numberOfCameras = 2;
         }
+        Log.i(TAG, "getNumberOfCameras numberOfCameras: " + numberOfCameras);  //T.Tateishi
         return numberOfCameras;
     }
 
@@ -282,6 +284,7 @@ public class Camera {
         // This should be .packagewhitelist but we shouldn't change qualcomm's default
         String packageList = SystemProperties.get("vendor.camera.aux.packagelist");
         String packageBlacklist = SystemProperties.get("vendor.camera.aux.packageblacklist");
+        Log.i(TAG, "shouldExposeAuxCamera packageName: " + packageName + " packageList: " + packageList + " packageBlacklist: " + packageBlacklist);  //T.Tateishi
         if (packageList.length() > 0) {
             TextUtils.StringSplitter splitter = new TextUtils.SimpleStringSplitter(',');
             splitter.setString(packageList);

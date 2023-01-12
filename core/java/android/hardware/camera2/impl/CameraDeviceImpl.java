@@ -276,6 +276,7 @@ public class CameraDeviceImpl extends CameraDevice
      *
      */
     public void setRemoteDevice(ICameraDeviceUser remoteDevice) throws CameraAccessException {
+        Log.i(TAG, "setRemoteDevice remoteDevice:" + remoteDevice);
         synchronized(mInterfaceLock) {
             // TODO: Move from decorator to direct binder-mediated exceptions
             // If setRemoteFailure already called, do nothing
@@ -356,6 +357,7 @@ public class CameraDeviceImpl extends CameraDevice
     }
 
     public void configureOutputs(List<Surface> outputs) throws CameraAccessException {
+        Log.i(TAG, "configureOutputs outputs : " + outputs);
         // Leave this here for backwards compatibility with older code using this directly
         ArrayList<OutputConfiguration> outputConfigs = new ArrayList<>(outputs.size());
         for (Surface s : outputs) {
@@ -389,6 +391,10 @@ public class CameraDeviceImpl extends CameraDevice
     public boolean configureStreamsChecked(InputConfiguration inputConfig,
             List<OutputConfiguration> outputs, int operatingMode)
                     throws CameraAccessException {
+        Log.i(TAG, "configureStreamsChecked inputConfig : " + inputConfig);
+        Log.i(TAG, "configureStreamsChecked outputs : " + outputs);
+        Log.i(TAG, "configureStreamsChecked operatingMode : " + operatingMode);
+
         // Treat a null input the same an empty list
         if (outputs == null) {
             outputs = new ArrayList<OutputConfiguration>();
@@ -413,6 +419,7 @@ public class CameraDeviceImpl extends CameraDevice
             for (int i = 0; i < mConfiguredOutputs.size(); ++i) {
                 int streamId = mConfiguredOutputs.keyAt(i);
                 OutputConfiguration outConfig = mConfiguredOutputs.valueAt(i);
+                Log.i(TAG, "configureStreamsChecked outConfig : " + outConfig);
 
                 if (!outputs.contains(outConfig) || outConfig.isDeferredConfiguration()) {
                     // Always delete the deferred output configuration when the session
@@ -428,37 +435,57 @@ public class CameraDeviceImpl extends CameraDevice
             stopRepeating();
 
             try {
-                waitUntilIdle();
+                try {
+                    waitUntilIdle();
+                }
+                catch(Exception e){
+                    Log.e(TAG, "configureStreamsChecked waitUntilIdle exception: " + e.getMessage());
+                    Log.i(TAG, "### DEBUG ### but continue anyway...");
+                }
 
                 mRemoteDevice.beginConfigure();
 
                 // reconfigure the input stream if the input configuration is different.
+                Log.i(TAG, "inputConfig: " + inputConfig);
+                Log.i(TAG, "mConfiguredInput: " + mConfiguredInput);
                 InputConfiguration currentInputConfig = mConfiguredInput.getValue();
+                Log.i(TAG, "currentInputConfig: " + currentInputConfig);
                 if (inputConfig != currentInputConfig &&
                         (inputConfig == null || !inputConfig.equals(currentInputConfig))) {
+                    Log.i(TAG, "currentInputConfig: " + currentInputConfig);
                     if (currentInputConfig != null) {
+                        Log.i(TAG, "deleteStream : " + mConfiguredInput.getKey());
                         mRemoteDevice.deleteStream(mConfiguredInput.getKey());
                         mConfiguredInput = new SimpleEntry<Integer, InputConfiguration>(
                                 REQUEST_ID_NONE, null);
+                        Log.i(TAG, "mConfiguredInput : " + mConfiguredInput);
                     }
                     if (inputConfig != null) {
                         int streamId = mRemoteDevice.createInputStream(inputConfig.getWidth(),
                                 inputConfig.getHeight(), inputConfig.getFormat());
+                        Log.i(TAG, "mRemoteDevice.createInputStream streamId: " + streamId);
                         mConfiguredInput = new SimpleEntry<Integer, InputConfiguration>(
-                                streamId, inputConfig);
+                            streamId, inputConfig);
+                        Log.i(TAG, "mConfiguredInput: " + mConfiguredInput);
                     }
                 }
 
                 // Delete all streams first (to free up HW resources)
                 for (Integer streamId : deleteList) {
+                    Log.i(TAG, "mRemoteDevice.deleteStream streamId: " + streamId);
                     mRemoteDevice.deleteStream(streamId);
                     mConfiguredOutputs.delete(streamId);
                 }
 
                 // Add all new streams
+                Log.i(TAG, "outputs: " + outputs);
+                Log.i(TAG, "addSet: " + addSet);
                 for (OutputConfiguration outConfig : outputs) {
+                    Log.i(TAG, "outConfig: " + outConfig);
                     if (addSet.contains(outConfig)) {
+                        Log.i(TAG, "addSet.contains(outConfig), calling mRemoteDevice.createStream(outConfig)...");
                         int streamId = mRemoteDevice.createStream(outConfig);
+                        Log.i(TAG, "streamId: " + streamId);
                         mConfiguredOutputs.put(streamId, outConfig);
                     }
                 }
@@ -472,12 +499,14 @@ public class CameraDeviceImpl extends CameraDevice
                 Log.w(TAG, "Stream configuration failed due to: " + e.getMessage());
                 return false;
             } catch (CameraAccessException e) {
+                Log.i(TAG, "configureStreamsChecked CameraAccessException : " + e.getMessage());
                 if (e.getReason() == CameraAccessException.CAMERA_IN_USE) {
                     throw new IllegalStateException("The camera is currently busy." +
                             " You must wait until the previous operation completes.", e);
                 }
                 throw e;
             } finally {
+                Log.i(TAG, "configureStreamsChecked success: " + success + " outputs.size():" + outputs.size());
                 if (success && outputs.size() > 0) {
                     mDeviceHandler.post(mCallOnIdle);
                 } else {
@@ -487,6 +516,7 @@ public class CameraDeviceImpl extends CameraDevice
             }
         }
 
+        Log.i(TAG, "configureStreamsChecked return: " + success);
         return success;
     }
 
@@ -638,9 +668,9 @@ public class CameraDeviceImpl extends CameraDevice
                 configureSuccess = false;
                 pendingException = e;
                 input = null;
-                if (DEBUG) {
+                //if (DEBUG) {
                     Log.v(TAG, "createCaptureSession - failed with exception ", e);
-                }
+                //}
             }
 
             // Fire onConfigured if configureOutputs succeeded, fire onConfigureFailed otherwise.
@@ -1075,14 +1105,20 @@ public class CameraDeviceImpl extends CameraDevice
     }
 
     private void checkInputConfiguration(InputConfiguration inputConfig) {
+        Log.i(TAG, "checkInputConfiguration inputConfig : " + inputConfig);
         if (inputConfig != null) {
+            Log.i(TAG, "checkInputConfiguration inputConfig.getFormat() : " + inputConfig.getFormat());
+            Log.i(TAG, "checkInputConfiguration inputConfig.getWidth() : " + inputConfig.getWidth());
+            Log.i(TAG, "checkInputConfiguration inputConfig.getHeight() : " + inputConfig.getHeight());
             StreamConfigurationMap configMap = mCharacteristics.get(
                     CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
 
             int[] inputFormats = configMap.getInputFormats();
             boolean validFormat = false;
             for (int format : inputFormats) {
+                Log.i(TAG, "checkInputConfiguration format : " + format);
                 if (format == inputConfig.getFormat()) {
+                    Log.i(TAG, "checkInputConfiguration set validFormat = true");
                     validFormat = true;
                 }
             }
@@ -1095,8 +1131,10 @@ public class CameraDeviceImpl extends CameraDevice
             boolean validSize = false;
             Size[] inputSizes = configMap.getInputSizes(inputConfig.getFormat());
             for (Size s : inputSizes) {
+                Log.i(TAG, "checkInputConfiguration s : " + s.getWidth() + "," + s.getHeight());
                 if (inputConfig.getWidth() == s.getWidth() &&
                         inputConfig.getHeight() == s.getHeight()) {
+                    Log.i(TAG, "checkInputConfiguration set validSize = true");
                     validSize = true;
                 }
             }
@@ -2181,6 +2219,8 @@ public class CameraDeviceImpl extends CameraDevice
     }
 
     private void checkIfCameraClosedOrInError() throws CameraAccessException {
+        Log.i(TAG, "checkIfCameraClosedOrInError mRemoteDevice: " + mRemoteDevice);
+        Log.i(TAG, "checkIfCameraClosedOrInError mInError: " + mInError);
         if (mRemoteDevice == null) {
             throw new IllegalStateException("CameraDevice was already closed");
         }
@@ -2192,6 +2232,7 @@ public class CameraDeviceImpl extends CameraDevice
 
     /** Whether the camera device has started to close (may not yet have finished) */
     private boolean isClosed() {
+        Log.i(TAG, "isClosed return: " + mClosing.get());
         return mClosing.get();
     }
 
